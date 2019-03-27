@@ -1,0 +1,149 @@
+:root {
+    --main-text-color: #eeeeee;
+    --main-text-negative: #797979;
+
+    --primary-background-color: #0088ce;
+    --secondary-background-color: #263145;
+    --accent-color: #8cc63e;
+}
+
+body {
+    margin: 0; padding: 0;
+    color: var(--main-text-color);
+    background-color: var(--primary-background-color);
+    /*overflow: hidden;*/
+    font-size: 0.95em;
+    font-family: serif;
+}
+
+h1,h2,h3,h4,h5 {
+    margin: 0; padding: 0;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
+        monospace;
+}
+
+hr {
+    padding: 0; margin: 0;
+    color: var(--main-text-negative);
+}
+
+a {
+    outline:none;
+    color:inherit;
+}
+
+input, textarea {
+    outline: none !important;
+    color: black;
+    background-color: #bababa;
+    resize: none !important;
+    margin: 10px;
+    box-shadow: 0 0 5px black;
+}
+
+input[type="button"] {
+    outline: none;
+    border: 0;
+    box-shadow: 0 0 5px black;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100px;
+    height: 35px;
+    transition: 0.5s;
+}
+input[type="button"]:hover {
+    background-color: var(--accent-color);
+    color: var(--main-text-color);
+}
+
+.App {
+    overflow: visible;
+}
+
+.nav-menu-selected li {
+    background-color: var(--primary-background-color) !important;
+}
+
+.form-input {
+    width: 75%;
+    font-size: 1.3em;
+    font-family: monospace;
+    min-width: 300px;
+}
+
+.form-errors {
+    color: #ed2200;
+    font-size: 0.8em;
+}
+
+.results-area {
+    width: 75%;
+    font-size: 1.5em;
+    font-family: monospace;
+    min-width: 300px;
+    height: 200px;
+    overflow-y: auto;
+}
+
+div#inner-app {
+    min-width: 1000px;
+    max-width: 1400px;
+    width: 100%;
+    min-height: 100vh;
+    max-height: 100%;
+    margin: 0 auto;
+    padding: 0;
+    background-color: var(--secondary-background-color);
+    box-shadow: 0 0 25px black;
+    border: 1px solid black;
+}
+
+img#tool-logo {
+    height: 60px;
+    max-width: 360px;
+    vertical-align: middle;
+    margin: 0 auto; padding: 0;
+    display: block;
+}
+
+span#header-text {
+    /*color: var(--alternate-form-color);*/
+    font-size: 24px;
+    font-weight: bold;
+    font-family: monospace !important;
+    text-align: center;
+    margin: 0 auto 20px auto; padding: 0;
+    display: block;
+}
+
+div#nav-menu-wrapper {
+}
+ul#nav-menu {
+    list-style-type: none;
+    margin: 0; padding: 0;
+    height: 40px;
+}
+ul#nav-menu li {
+    line-height: 40px;
+    min-width: 105px;
+    padding: 0 10px;
+    display: inline-block;
+    float: left;
+    cursor: pointer;
+    text-align: center;
+    transition: 0.5s;
+}
+ul#nav-menu li:hover {
+    background-color: var(--accent-color);
+    box-shadow: 0 0 10px var(--primary-background-color);
+}
+
+
+div#switch-wrapper {
+    margin: 0; padding: 0 10px;
+    overflow-y: auto;
+    word-wrap: break-word;
+}
