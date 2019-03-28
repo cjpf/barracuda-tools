@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { NavLink, Switch, Route, Redirect } from 'react-router-dom';
+import { NavLink, Route } from 'react-router-dom';
 
 export default class FilterFixer extends Component {
     constructor(props) {
@@ -18,9 +18,12 @@ export default class FilterFixer extends Component {
         let valArray = value.split('\n');
         // Define a new empty array to push results onto.
         let resArray = [];
-        // Define the stringified version of the final results array above.
+        // Define two more specifically for content/attachment filtering.
+        let contentOut = [];
+        let contentIn = [];
+        // Define the stringified version of the final results arrays above.
         //  For now, this will be just put into a window alert for the user to capture the results.
-        let returnMe = "";
+        let returnMe = ""; let returnMeIn = ""; let returnMeOut = "";
 
         // For each line, trim whitespace from the input and begin conversion.
         for(let i = 0; i < valArray.length; i++) {
@@ -50,17 +53,18 @@ export default class FilterFixer extends Component {
                     result += pieces;
                     break; }
                 case "Sender" : {
-                    if(!line.match(/^(.+\.[0-9a-z\-\.]{2,})/gi)) { continue; }
+                    if(!line.match(/^(.+\.[0-9a-z-\.]{2,})/gi)) { continue; }
                     pieces = line.split(",");
                     result = pieces[0]+",";
                     if(pieces[pieces.length-1].match(/^(Quarantine|Tag)$/gi)) { result += "quarantine"; }
                     else if(pieces[pieces.length-1].match(/^(Block)$/gi)) { result += "block"; }
                     else { result += "exempt"; }
-                    result += ","+pieces.splice(1,pieces.length-2);
+                    result += ","+pieces.splice(1,pieces.length-1);
+                    result = result.replace(/,(Block|Quarantine|Tag)$/g, '');
                     break; }
                 case "Recipient" : {
                     // This will drop anything that isn't an EMAIL ADDRESS specifically.
-                    if(!line.match(/^\/?([a-z0-9+\-_.=%]+@[a-z0-9.\-]+\.[a-z0-9]{2,})\/?/gi)) { continue; }
+                    if(!line.match(/^\/?([a-z0-9+-_.=%]+@[a-z0-9.-]+\.[a-z0-9]{2,})\/?/gi)) { continue; }
                     pieces = line.split(",");
                     if(pieces[1].match(/^(Quarantine|Tag|Block)$/gi)) { continue; }
                     result = pieces;
@@ -68,18 +72,56 @@ export default class FilterFixer extends Component {
                 case "Content" : {
                     // Ignore any line that doesn't end with three consecutive digits with commas between them.
                     if(!line.match(/(,\d,\d,\d)$/gi)) { continue; }
+                    let isOutbound = true; let isInbound = true;
                     // Replace instances of 3+ double-quotes with: " *""+
                     line = line.replace(/^"{3,}/g,'" *""+').replace(/"{3,},/,'""+ *",');
                     // Grab the filter from a lone single-quote to a lone single-quote appropriately
                     let pattern = line.match(/^((".+?[^"]",)|([^"].+?,))/gi);
                     // Strip the pattern field off.
                     line = line.replace(/^((".+?[^"]",)|([^"].+?,))/gi,'');
-
                     // Now do the same thing again (slight variation) to replace ANY comments.
                     line = line.replace(/^((".+?[^"]",)|([^",].*?,)|(^,))/gi,'');
 
-                    alert(pattern+"\n\n"+line);
+                    //alert(pattern+"\n\n"+line);
+                    result = pattern;
+
                     pieces = line.split(",");
+                    //  New var resultO for outbound filters.
+                    let resultO = result; // preserve the result var into the OB version
+                    // Parse the inbound side of the ESG action.
+                    switch(pieces[0]) {
+                        case "Tag" :
+                        case "Quarantine" :
+                            result += "quarantine,"; break;
+                        case "Whitelist" : result += "allow,"; break;
+                        case "Block" : result += "block,"; break;
+                        //case "Off" : isInbound = false; break;
+                        default: isInbound = false; break;
+                    }
+                    // Parse the "outbound" side of the ESG action.
+                    switch(pieces[1]) {
+                        case "Tag" :
+                        case "Quarantine" :
+                            resultO += "quarantine,"; break;
+                        case "Whitelist" :
+                            resultO += "allow,"; break;
+                        case "Encrypt" :
+                            resultO += "encrypt,"; break;
+                        case "Block" :
+                            resultO += "block,"; break;
+                        //case "Off" : case "Redirect" :
+                        default: isOutbound = false; break;
+                    }
+
+                    // Parse the remaining flags.
+                    if(pieces[2] === "1") { result += "subject,"; resultO += "subject,"; }
+                    if(pieces[3] === "1") { result += "headers,"; resultO += "headers,"; }
+                    if(pieces[4] === "1") { result += "body"; resultO += "body"; }
+
+                    // Store the entries into the result arrays, if flags are set.
+                    //alert((isInbound ? result : "-")+"\n\n"+(isOutbound ? resultO : "-"));
+                    if(isInbound === true) { contentIn.push(result); }
+                    if(isOutbound === true) { contentOut.push(resultO); }
                     break; }
                 case "Attachment" : {
 
@@ -88,7 +130,7 @@ export default class FilterFixer extends Component {
             }
 
             // Push the result onto the results array.
-            resArray.push(result);
+            if(type !== "Content" && type !== "Attachment") { resArray.push(result); }
         }
 
         // Remove dupes from resArray here.
@@ -100,7 +142,11 @@ export default class FilterFixer extends Component {
             }
             alert(returnMe);
         } else {
+            for (let x = 0; x < contentIn.length; x++) { returnMeIn += "\n"+contentIn[x].toString().replace(/,+$/g,''); }
+            for (let x = 0; x < contentOut.length; x++) { returnMeOut += "\n"+contentOut[x].toString().replace(/,+$/g,''); }
             // Build an "Inbound" and "Outbound" results window.
+            alert("INBOUND:\n\n"+returnMeIn);
+            alert("OUTBOUND:\n\n"+returnMeOut);
         }
     }
 
@@ -198,7 +244,7 @@ function Filter(props) {
             textDisplay = {__html : `<h2>Attachment Filters</h2>
             <p><strong>Required formatting:</strong>
             <ul><li>Filename Pattern,Comment,Inbound Action,Outbound Action,Check Archives</li>
-            </ul></p>`}
+            </ul><i>You can enter attachment filename filters and MIME types together.</i></p>`}
             break;
         default: break;
     }
