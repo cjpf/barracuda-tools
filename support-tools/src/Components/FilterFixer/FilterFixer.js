@@ -124,6 +124,48 @@ export default class FilterFixer extends Component {
                     if(isOutbound === true) { contentOut.push(resultO); }
                     break; }
                 case "Attachment" : {
+                    let isMIME = true; let isInbound = true; let isOutbound = true;
+                    // Does the line end with a "Check Archives" value (1/0)? If so, not MIME.
+                    if(line.match(/,\d\s*$/g)) { isMIME = false; }
+                    pieces = line.split(",");
+
+                    result = (isMIME ? "mime," : "filename,");
+                    result += pieces[0]+",";
+                    result += (isMIME ? "0" : pieces[pieces.length-1])+",";
+                    let resultO = result;
+                    let subtractions = [(isMIME ? 1 : 2), (isMIME ? 2 : 3)];
+                    let actionOut = pieces[pieces.length-parseInt(subtractions[0],10)];
+                    let actionIn = pieces[pieces.length-parseInt(subtractions[1],10)];
+                    // Check Outbound Side for filter. Ignores Encrypt, Redirect, & Off
+                    switch(actionOut) {
+                        case "Block" : resultO += "block,"; break;
+                        case "Quarantine" : resultO += "quarantine,"; break;
+                        // Don't assume ignore option for OFF.
+                        //case "Off" : resultO += "ignore,"; break;
+                        default: isOutbound = false; break;
+                    }
+                    // Check Inbound Side for filter.
+                    switch(actionIn) {
+                        case "Block" : result += "block,"; break;
+                        case "Quarantine" : result += "quarantine,"; break;
+                        // Don't assume ignore option for OFF.
+                        //case "Off" : result += "ignore,"; break;
+                        default: isInbound = false; break;
+                    }
+
+                    // Splice off the terminating two options, and get the Comment.
+                    let boundary = pieces.length-parseInt(subtractions[1],10);
+                    pieces.splice(boundary, pieces.length);
+                    // Add the second argument to the end of the results strings.
+                    //   Also test for a null comment and just add a ... in its stead.
+                    let nullTest = "'"+pieces.slice(1,pieces.length)+"'";
+                    if(nullTest !== "''") {
+                        resultO += pieces.slice(1,pieces.length);
+                        result += pieces.slice(1,pieces.length);
+                    } else { resultO += "..."; result += "..."; }
+
+                    if(isInbound === true) { contentIn.push(result); }
+                    if(isOutbound === true) { contentOut.push(resultO); }
 
                     break; }
                 default: continue;
@@ -135,18 +177,20 @@ export default class FilterFixer extends Component {
 
         // Remove dupes from resArray here.
 
-        if(type !== "Content") {
-            // Build the results string from the results array, and output it.
-            for(let x = 0; x < resArray.length; x++) {
-                returnMe += "\n"+resArray[x].toString();
-            }
-            alert(returnMe);
-        } else {
+        if(type === "Content" || type === "Attachment") {
+            //dedupe(contentIn); dedupe(contentOut);
             for (let x = 0; x < contentIn.length; x++) { returnMeIn += "\n"+contentIn[x].toString().replace(/,+$/g,''); }
             for (let x = 0; x < contentOut.length; x++) { returnMeOut += "\n"+contentOut[x].toString().replace(/,+$/g,''); }
             // Build an "Inbound" and "Outbound" results window.
             alert("INBOUND:\n\n"+returnMeIn);
             alert("OUTBOUND:\n\n"+returnMeOut);
+        } else {
+            //dedupe(resArray);
+            // Build the results string from the results array, and output it.
+            for(let x = 0; x < resArray.length; x++) {
+                returnMe += "\n"+resArray[x].toString();
+            }
+            alert(returnMe);
         }
     }
 
@@ -161,9 +205,9 @@ export default class FilterFixer extends Component {
                         <NavLink exact to="/FilterFixer/Home" activeClassName="nav-menu-selected">
                             <li>{"Home"}</li>
                         </NavLink>
-                        <NavLink to="/FilterFixer/Dedupe" activeClassName="nav-menu-selected">
+                        {/*<NavLink to="/FilterFixer/Dedupe" activeClassName="nav-menu-selected">
                             <li>{"De-Duplicate"}</li>
-                        </NavLink>
+                        </NavLink>*/}
                         <NavLink to="/FilterFixer/IP" activeClassName="nav-menu-selected">
                             <li>{"IP Filters"}</li>
                         </NavLink>
@@ -244,7 +288,11 @@ function Filter(props) {
             textDisplay = {__html : `<h2>Attachment Filters</h2>
             <p><strong>Required formatting:</strong>
             <ul><li>Filename Pattern,Comment,Inbound Action,Outbound Action,Check Archives</li>
-            </ul><i>You can enter attachment filename filters and MIME types together.</i></p>`}
+            <li>Attachment MIME Type,Comment,Inbound Action,Outbound Action</li>
+            </ul><i>You can enter attachment filename filters and MIME types together.</i><br />
+            <i><span style="color:var(--accent-color)">NOTE:</span> Any Attachment/MIME filters with Encryption triggers
+            for the pattern will need to be added by hand to the Outbound Message Content Filter section with the "Attachments"
+            checkbox.</i></p>`}
             break;
         default: break;
     }
