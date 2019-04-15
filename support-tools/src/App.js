@@ -5,6 +5,7 @@ import './App.css';
 import FilterFixer from './Components/FilterFixer/FilterFixer';
 import LinkProtect from './Components/LinkProtect/LinkProtect';
 import GeoIP from './Components/GeoIP/GeoIP';
+import DKIMVerify from './Components/DKIM-Verify/DKIMVerify';
 
 export default class App extends Component {
     constructor(props) {
@@ -33,6 +34,9 @@ export default class App extends Component {
                             <NavLink to="/GeoIP" activeClassName="nav-menu-selected">
                                 <li>{"GeoIP"}</li>
                             </NavLink>
+                            <NavLink to="/DKIMVerify" activeClassName="nav-menu-selected">
+                                <li>{"DKIM Verify"}</li>
+                            </NavLink>
                         </ul>
                     </div>
                     <hr />
@@ -43,6 +47,7 @@ export default class App extends Component {
                             <Route path="/FilterFixer" component={()=>{return <FilterFixer />;}} />
                             <Route path="/LinkProtect" component={()=>{return <LinkProtect />;}} />
                             <Route path="/GeoIP" component={()=>{return <GeoIP />;}} />
+                            <Route path="/DKIMVerify" component={()=>{return <DKIMVerify />;}} />
                         </Switch>
                     </div>
                 </div>
