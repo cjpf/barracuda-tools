@@ -1,0 +1,25 @@
+{
+  "name": "barracuda-tools",
+  "version": "0.1.0",
+  "description": "A branching web form, using mostly client-side rendering and processing power, that will perform any minor functions strictly related to a Barracuda product. This project is **intended** for use by Barracuda Networks Technical Support as a consolidated tool but may be used by any savvy administrator or MSP.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "server": "nodemon server.js",
+    "support-tools": "npm start --prefix support-tools",
+    "dev": "concurrently \"npm run server\" \"npm run support-tools\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cjpf/barracuda-tools.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/cjpf/barracuda-tools/issues"
+  },
+  "homepage": "https://github.com/cjpf/barracuda-tools#readme",
+  "devDependencies": {
+    "nodemon": "^1.18.11"
+  }
+}
