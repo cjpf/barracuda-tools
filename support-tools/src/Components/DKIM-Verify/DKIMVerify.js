@@ -5,18 +5,16 @@ export default class DKIMVerify extends Component {
     super(props);
 
         this.state = {
-            emailContent: ''
+            emailContent: '',
+            DKIM_RECORD: []
         };
-
-        // bindings
+        
         this.checkFileAPI = this.checkFileAPI.bind(this);
         this.getFile = this.getFile.bind(this);
-        // this.getResult = this.getResult.bind(this);
-        // this.buildResult = this.buildResult.bind(this);
         this.getSignature = this.getSignature.bind(this);
         this.getField = this.getField.bind(this);
-        this.hexdump = this.hexdump.bind(this);
         this.extractSignature = this.extractSignature.bind(this);
+        this.fetchDKIM = this.fetchDKIM.bind(this);
     }
 
     checkFileAPI() {
@@ -30,39 +28,24 @@ export default class DKIMVerify extends Component {
     getFile() {
         console.log('Getting file from input.');
         this.checkFileAPI();
-        // create FileReader
+        // create FileReader and get first file - this can be made to read multiple files in the future
         const reader = new FileReader();
-
-        // get first file - this can be made to read multiple files in the future
         let file = document.getElementById('fileinput').files[0];
-        console.log(file);
-
-        // When this finishes, one of the following callbacks will execute
         reader.readAsText(file);
 
         // success callback for reader.readAsText()
         reader.onload = (event) => {
-            console.log('FileReader loaded file successfully.');
+            console.log('FileReader success.');
             var fileContent = reader.result;
-            this.setState({emailContent: fileContent})            
+            this.setState({emailContent: fileContent});           
             this.extractSignature();
         }
 
         // error callback for reader.readAsText()
         reader.onerror = (event) => {
-            console.log('File reader error.');
+            console.log('FileReader error.');
         }
     }
-
-    // Return the final "result" object (full JSON object).
-    // getResult() {
-    //     return this.buildResult();
-    // }
-
-    // buildResult() {
-    //     return {
-    //     };
-    // }
 
     getSignature(headers) {
         let tempVar = headers.match(/(\r\n)(DKIM-Signature:(.|\r|\n)*?)(\r\n)[a-z0-9.-_]/mig);
@@ -82,29 +65,8 @@ export default class DKIMVerify extends Component {
         return tempVar[0].replace(/;\s*$/,'');
     }
 
-    // Debugging, delete later.
-    hexdump(buffer, blockSize) {
-        blockSize = blockSize || 16;
-        var lines = [];
-        var hex = "0123456789ABCDEF";
-        for (var b = 0; b < buffer.length; b += blockSize) {
-            var block = buffer.slice(b, Math.min(b + blockSize, buffer.length));
-            var addr = ("0000" + b.toString(16)).slice(-4);
-            var codes = block.split('').map(function (ch) {
-                var code = ch.charCodeAt(0);
-                return " " + hex[(0xF0 & code) >> 4] + hex[0x0F & code];
-            }).join("");
-            codes += "   ".repeat(blockSize - block.length);
-            var chars = block.replace(/[\x00-\x1F\x20]/g, '.');
-            chars +=  " ".repeat(blockSize - block.length);
-            lines.push(addr + " " + codes + "  " + chars);
-        }
-        return lines.join("\n");
-    }
-
     extractSignature() {
-        console.log("extractSignature() executing.");
-        //console.log("FULL EMAIL FILE: " + this.state.emailContent);
+        console.log("Extracting DKIM Signature...");
         // Ensure CRLF line endings.
         var rawemail = this.state.emailContent.replace(/\r?\n/mg, '\r\n');
         // Chop up the raw email into the header/body sections.
@@ -150,13 +112,19 @@ export default class DKIMVerify extends Component {
             *  DKIM-Signature field with a "d=" tag of "example.com" and an "s=" tag
             *  of "foo.bar", the DNS query will be for "foo.bar._domainkey.example.com".
             */
-        let pubkeyURL = 'gmail.com';
-        // TODO Send Lookup requests to server 
-        // let pubkeyLookup = dns.lookup('gmail.com', (a,b) => {
-        //     console.log(a+"\n"+b);
-        // });
-        console.log("PubKeyURL: " + pubkeyURL);
-    
+
+        // Only testing here - this is not the right place for this call.
+        this.fetchDKIM("protonmail._domainkey.charliejuliet.net");
+    }
+
+    fetchDKIM(hostname) {
+        fetch('/api/dkim/' + hostname)
+            .then(results => results.json())
+            .then(DKIM_RECORD =>
+                this.setState({ DKIM_RECORD }, () =>
+                    console.log("DKIM RECORD FETCHED", JSON.stringify(DKIM_RECORD))
+                )
+            )
     }
 
     render() {
