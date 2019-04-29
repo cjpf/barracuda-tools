@@ -100,6 +100,7 @@ export default class DKIMVerify extends Component {
     // TODO Strip semi-colons and p=
     // TODO Add BEGIN and END tags to the key
     // TODO Verify that the key is valid
+    // TODO indicate pass/fail to user
   }
 
   extractSignature() {
@@ -117,6 +118,8 @@ export default class DKIMVerify extends Component {
       return;
     }
     console.log("FULL SIGNATURE: " + this.fullSignature);
+    //document.getElementById('dkim-signature-area').value = this.fullSignature;
+
     // "Normalize" the signature to pass to the "getField" function as needed.
     //  This "unwraps" or "unfolds" (per RFC terminology) the DKIM-Signature header.
     this.normalizedSignature = this.fullSignature
@@ -124,6 +127,7 @@ export default class DKIMVerify extends Component {
       .replace(/(\r\n)(\s|\t)+/gim, "")
       .replace(/(\s+(?![^=]{3}))/gim, "");
     console.log("NORMALIZED SIGNATURE: " + this.normalizedSignature);
+    document.getElementById('dkim-signature-area').value = this.normalizedSignature;
 
     /* Per RFC 6376, Section 3.5:
      * DKIM-Signature header fields MUST include the following tags:
@@ -163,13 +167,14 @@ export default class DKIMVerify extends Component {
   }
 
   fetchDKIM(hostname) {
-    this.DKIM_RECORD = '';
+    this.DKIM_RECORD = "";
     fetch("/api/dkim/" + hostname)
       .then(results => results.json())
       .then(DKIM_RECORD =>
-        this.setState({ DKIM_RECORD }, () =>
-          console.log("DKIM RECORD FETCHED", JSON.stringify(DKIM_RECORD))
-        )
+        this.setState({ DKIM_RECORD }, () => {
+          //console.log("DKIM RECORD FETCHED", DKIM_RECORD);
+          document.getElementById('dkim-publickey-area').value = DKIM_RECORD;
+        })
       );
   }
 
@@ -192,6 +197,12 @@ export default class DKIMVerify extends Component {
             this.getPublicKey();
           }}
         />
+        <br/><br/>
+        <label>DKIM Signature</label><br/>
+        <textarea name='dkim-signature-area' id='dkim-signature-area' className='form-input' style={{'height':'150px'}} disabled/>
+        <br/><br/>
+        <label>Public Key</label><br/>
+        <textarea name='dkim-publickey-area' id='dkim-publickey-area' className='form-input' style={{'height':'100px'}} disabled/>
       </div>
     );
   }
