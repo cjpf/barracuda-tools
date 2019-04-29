@@ -19,6 +19,8 @@ export default class DKIMVerify extends Component {
       DKIM_CANON: "",
       DKIM_CANON_BODY: "",
       DKIM_CANON_HEADER: "",
+      CANON_HEADERS: "",
+      CANON_BODY: ""
     };
 
     this.checkFileAPI = this.checkFileAPI.bind(this);
@@ -29,6 +31,7 @@ export default class DKIMVerify extends Component {
     this.fetchDKIM = this.fetchDKIM.bind(this);
     this.getEmailSections = this.getEmailSections.bind(this);
     this.getSigCanon = this.getSigCanon.bind(this);
+    this.canonicalizeHeader = this.canonicalizeHeader.bind(this);
   }
 
   checkFileAPI() {
@@ -145,6 +148,72 @@ export default class DKIMVerify extends Component {
       this.DKIM_CANON_BODY;
     console.log(this.DKIM_CANON_HEADER);
     console.log(this.DKIM_CANON_BODY);
+    this.canonicalizeHeader();
+  }
+
+  // canonicalizeHeader
+  // -- Canonicalize the header of the email (EMAIL_HEADERS) in accordance with the (DKIM_CANON_HEADER) algorithm.
+  canonicalizeHeader() {
+    this.CANON_HEADERS = '';
+    if (this.DKIM_CANON_HEADER === "simple") {
+      // RFC 6376, S 3.4.1:
+      // The "simple" header canonicalization algorithm does not change header
+      // fields in any way.  Header fields MUST be presented to the signing or
+      // verification algorithm exactly as they are in the message being
+      // signed or verified.  In particular, header field names MUST NOT be
+      // case folded and whitespace MUST NOT be changed.
+      this.CANON_HEADERS = this.header;
+    } else if (this.DKIM_CANON_HEADER === "relaxed") {
+      // // RFC 6376, S 3.4.2:
+      // // The "relaxed" header canonicalization algorithm MUST apply the following steps in order:
+      // //  + Convert all header field names (not the header field values) to
+      // //    lowercase.  For example, convert "SUBJect: AbC" to "subject: AbC".
+      // TODO convert this block to JS
+      console.log(this.header);
+      // echo this.header | \
+      // while read -r line || [[ -n "$line" ]]; do
+      //   local HEADER=$(echo "$line" | cut -d':' -f1 | tr '[:upper:]' '[:lower:]')
+      //   local CUT_TEST=$(echo "$line" | cut -d':' -f2 | tr '[:upper:]' '[:lower:]')
+      //   if [[ "${HEADER}" == "${CUT_TEST}" || -n `echo "${line}" | grep -Poi '^(\s+|\t+)+.'` ]]; then
+      //     echo -ne "${line}\r\n" >>$TEMP_OUT
+      //     continue
+      //   fi
+      //   LANG='' line=$(echo "$line" | sed -r 's/^[\x21-\x7E]+://')
+      //   line=$(echo "${HEADER}:${line}" | sed -r 's/\x0a|\x0d//g')
+      //   echo -ne "${line}\r\n" >>$TEMP_OUT
+      // done
+      // CANON_HEADERS=$(cat $TEMP_OUT)
+      // rm $TEMP_OUT
+  
+      // // Unfold all header field continuation lines as described in
+      // //  [RFC5322 S 2.2.3]; in particular, lines with terminators embedded in
+      // //  continued header field values (that is, CRLF sequences followed by
+      // //  WSP) MUST be interpreted without the CRLF.  Implementations MUST
+      // //  NOT remove the CRLF at the end of the header field value.
+      // // -- I'm going to try a slightly different approach to this, rather than intensive scanning.
+      // echo -n "${CANON_HEADERS}" | xxd -ps | tr '\n' ' ' | tr -d ' ' | sed -r 's/(0d)+/0d/g' | sed -r 's/(0a)+/0a/g' \
+      //   |  sed -r 's/(0[aAdD]){2}((20)+|(09)+)+/20/g' >$TEMP_OUT
+      // CANON_HEADERS=$(echo -n `cat $TEMP_OUT` | perl -pe 's/([0-9a-fA-F]{2})/chr hex $1/gie')
+  
+      // // Convert all sequences of one or more WSP characters to a single SP
+      // //  character.  WSP characters here include those before and after a
+      // //  line folding boundary.
+      // //  Delete all WSP characters at the end of each unfolded header field
+      // //  value.
+      // CANON_HEADERS=$(echo -n "${CANON_HEADERS}" | sed -r 's/(\s+|\t+)+/ /g')
+      
+      // // Delete any WSP characters remaining before and after the colon
+      // //  separating the header field name from the header field value.  The
+      // //  colon separator MUST be retained.
+      // // -- Easy, find the first : character, seek and spaces or tabs out and nuke them.
+      // CANON_HEADERS=$(echo -n "${CANON_HEADERS}" | sed -r 's/(\s|\t)*:(\s|\t)*/:/')
+  
+      // rm $TEMP_OUT
+    }
+    else {
+      // The given canonicalization header doesn't match either above. Default it. This shouldn't ever happen.
+      this.CANON_HEADERS= this.header
+    }
   }
 
   extractSignature() {
