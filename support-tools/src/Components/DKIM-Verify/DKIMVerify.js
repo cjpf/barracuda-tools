@@ -15,7 +15,10 @@ export default class DKIMVerify extends Component {
       extractedBodyHash: "",
       signingDomain: "",
       signedHeaders: "",
-      selector: ""
+      selector: "",
+      DKIM_CANON: "",
+      DKIM_CANON_BODY: "",
+      DKIM_CANON_HEADER: ""
     };
 
     this.checkFileAPI = this.checkFileAPI.bind(this);
@@ -25,6 +28,7 @@ export default class DKIMVerify extends Component {
     this.extractSignature = this.extractSignature.bind(this);
     this.fetchDKIM = this.fetchDKIM.bind(this);
     this.getEmailSections = this.getEmailSections.bind(this);
+    this.getSigCanon = this.getSigCanon.bind(this);
   }
 
   checkFileAPI() {
@@ -103,6 +107,46 @@ export default class DKIMVerify extends Component {
     // TODO indicate pass/fail to user
   }
 
+  // getSigCanon
+  // Get the canonicalization of the DKIM Signature. Set to defaults as necessary.
+  // If no canonicalization algorithm is specified by the Signer, the "simple" algorithm defaults for both header and body.
+  getSigCanon() {
+    this.DKIM_CANON = this.getField("c", this.normalizedSignature);
+    console.log(this.DKIM_CANON);
+    if (this.DKIM_CANON.match("/")) {
+      // Both are explicitly defined, get them.
+      let dkim_strings = this.DKIM_CANON.split("/");
+      this.DKIM_CANON_HEADER = dkim_strings[0].split("=")[1];
+      this.DKIM_CANON_BODY = dkim_strings[1];
+    } else if (this.DKIM_CANON === "") {
+      // No canon. specified, set to defaults (simple/simple).
+      this.DKIM_CANON_HEADER = "simple";
+      this.DKIM_CANON_BODY = "simple";
+    } else {
+      // No slash character, only one specification means that the header canon. is explicitly defined. Body is default.
+      this.DKIM_CANON_HEADER = this.DKIM_CANON.split("=")[1];
+      this.DKIM_CANON_BODY = "simple";
+    }
+
+    // If anything came out NOT simple or relaxed, set them to simple.
+    if (
+      this.DKIM_CANON_HEADER !== "simple" &&
+      this.DKIM_CANON_HEADER !== "relaxed"
+    ) {
+      this.DKIM_CANON_HEADER = "simple";
+    }
+    if (this.DKIM_CANON_BODY !== "simple" && this.DKIM_CANON_BODY !== "relaxed") {
+      this.DKIM_CANON_BODY = "simple";
+    }
+    document.getElementById("dkim-canon-area").value =
+      "Header Canon: " +
+      this.DKIM_CANON_HEADER +
+      "\nBody Canon: " +
+      this.DKIM_CANON_BODY;
+    console.log(this.DKIM_CANON_HEADER);
+    console.log(this.DKIM_CANON_BODY);
+  }
+
   extractSignature() {
     console.log("Extracting DKIM Signature...");
     // Ensure CRLF line endings.
@@ -127,7 +171,9 @@ export default class DKIMVerify extends Component {
       .replace(/(\r\n)(\s|\t)+/gim, "")
       .replace(/(\s+(?![^=]{3}))/gim, "");
     console.log("NORMALIZED SIGNATURE: " + this.normalizedSignature);
-    document.getElementById('dkim-signature-area').value = this.normalizedSignature;
+    document.getElementById(
+      "dkim-signature-area"
+    ).value = this.normalizedSignature;
 
     /* Per RFC 6376, Section 3.5:
      * DKIM-Signature header fields MUST include the following tags:
@@ -172,8 +218,8 @@ export default class DKIMVerify extends Component {
       .then(results => results.json())
       .then(DKIM_RECORD =>
         this.setState({ DKIM_RECORD }, () => {
-          //console.log("DKIM RECORD FETCHED", DKIM_RECORD);
-          document.getElementById('dkim-publickey-area').value = DKIM_RECORD;
+          console.log("DKIM RECORD FETCHED", DKIM_RECORD);
+          document.getElementById("dkim-publickey-area").value = DKIM_RECORD;
         })
       );
   }
@@ -197,12 +243,46 @@ export default class DKIMVerify extends Component {
             this.getPublicKey();
           }}
         />
-        <br/><br/>
-        <label>DKIM Signature</label><br/>
-        <textarea name='dkim-signature-area' id='dkim-signature-area' className='form-input' style={{'height':'150px'}} disabled/>
-        <br/><br/>
-        <label>Public Key</label><br/>
-        <textarea name='dkim-publickey-area' id='dkim-publickey-area' className='form-input' style={{'height':'100px'}} disabled/>
+        <input
+          type="button"
+          value="getSigCanon"
+          onClick={() => {
+            this.getSigCanon();
+          }}
+        />
+        <br />
+        <br />
+        <label>DKIM Signature</label>
+        <br />
+        <textarea
+          name="dkim-signature-area"
+          id="dkim-signature-area"
+          className="form-input"
+          style={{ height: "150px" }}
+          disabled
+        />
+        <br />
+        <br />
+        <label>Public Key</label>
+        <br />
+        <textarea
+          name="dkim-publickey-area"
+          id="dkim-publickey-area"
+          className="form-input"
+          style={{ height: "100px" }}
+          disabled
+        />
+        <br />
+        <br />
+        <label>Canonicalization</label>
+        <br />
+        <textarea
+          name="dkim-canon-area"
+          id="dkim-canon-area"
+          className="form-input"
+          style={{ height: "50px" }}
+          disabled
+        />
       </div>
     );
   }
