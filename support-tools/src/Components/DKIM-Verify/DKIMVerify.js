@@ -32,6 +32,7 @@ export default class DKIMVerify extends Component {
     this.getEmailSections = this.getEmailSections.bind(this);
     this.getSigCanon = this.getSigCanon.bind(this);
     this.canonicalizeHeader = this.canonicalizeHeader.bind(this);
+    this.canonicalizeBody = this.canonicalizeBody.bind(this);
   }
 
   checkFileAPI() {
@@ -149,71 +150,106 @@ export default class DKIMVerify extends Component {
     console.log(this.DKIM_CANON_HEADER);
     console.log(this.DKIM_CANON_BODY);
     this.canonicalizeHeader();
+    this.canonicalizeBody();
   }
 
   // canonicalizeHeader
   // -- Canonicalize the header of the email (EMAIL_HEADERS) in accordance with the (DKIM_CANON_HEADER) algorithm.
   canonicalizeHeader() {
     this.CANON_HEADERS = '';
-    if (this.DKIM_CANON_HEADER === "simple") {
-      // RFC 6376, S 3.4.1:
-      // The "simple" header canonicalization algorithm does not change header
-      // fields in any way.  Header fields MUST be presented to the signing or
-      // verification algorithm exactly as they are in the message being
-      // signed or verified.  In particular, header field names MUST NOT be
-      // case folded and whitespace MUST NOT be changed.
-      this.CANON_HEADERS = this.header;
-    } else if (this.DKIM_CANON_HEADER === "relaxed") {
-      // // RFC 6376, S 3.4.2:
-      // // The "relaxed" header canonicalization algorithm MUST apply the following steps in order:
-      // //  + Convert all header field names (not the header field values) to
-      // //    lowercase.  For example, convert "SUBJect: AbC" to "subject: AbC".
-      // TODO convert this block to JS
+    // RFC 6376, S 3.4.1:
+    // The "simple" header canonicalization algorithm does not change header
+    // fields in any way.  Header fields MUST be presented to the signing or
+    // verification algorithm exactly as they are in the message being
+    // signed or verified.  In particular, header field names MUST NOT be
+    // case folded and whitespace MUST NOT be changed.
+    if (this.DKIM_CANON_HEADER === "simple") { this.CANON_HEADERS = this.header; }
+    // RFC 6376, S 3.4.2:
+    // The "relaxed" header canonicalization algorithm MUST apply the following steps in order:
+    //  + Convert all header field names (not the header field values) to
+    //    lowercase.  For example, convert "SUBJect: AbC" to "subject: AbC".
+    else if (this.DKIM_CANON_HEADER === "relaxed") {
+
       console.log(this.header);
-      // echo this.header | \
-      // while read -r line || [[ -n "$line" ]]; do
-      //   local HEADER=$(echo "$line" | cut -d':' -f1 | tr '[:upper:]' '[:lower:]')
-      //   local CUT_TEST=$(echo "$line" | cut -d':' -f2 | tr '[:upper:]' '[:lower:]')
-      //   if [[ "${HEADER}" == "${CUT_TEST}" || -n `echo "${line}" | grep -Poi '^(\s+|\t+)+.'` ]]; then
-      //     echo -ne "${line}\r\n" >>$TEMP_OUT
-      //     continue
-      //   fi
-      //   LANG='' line=$(echo "$line" | sed -r 's/^[\x21-\x7E]+://')
-      //   line=$(echo "${HEADER}:${line}" | sed -r 's/\x0a|\x0d//g')
-      //   echo -ne "${line}\r\n" >>$TEMP_OUT
-      // done
-      // CANON_HEADERS=$(cat $TEMP_OUT)
-      // rm $TEMP_OUT
+
+      echo this.header | \
+      while read -r line || [[ -n "$line" ]]; do
+        local HEADER=$(echo "$line" | cut -d':' -f1 | tr '[:upper:]' '[:lower:]')
+        local CUT_TEST=$(echo "$line" | cut -d':' -f2 | tr '[:upper:]' '[:lower:]')
+        if [[ "${HEADER}" == "${CUT_TEST}" || -n `echo "${line}" | grep -Poi '^(\s+|\t+)+.'` ]]; then
+          echo -ne "${line}\r\n" >>$TEMP_OUT
+          continue
+        fi
+        LANG='' line=$(echo "$line" | sed -r 's/^[\x21-\x7E]+://')
+        line=$(echo "${HEADER}:${line}" | sed -r 's/\x0a|\x0d//g')
+        echo -ne "${line}\r\n" >>$TEMP_OUT
+      done
+      this.CANON_HEADERS=$(cat $TEMP_OUT)
   
-      // // Unfold all header field continuation lines as described in
-      // //  [RFC5322 S 2.2.3]; in particular, lines with terminators embedded in
-      // //  continued header field values (that is, CRLF sequences followed by
-      // //  WSP) MUST be interpreted without the CRLF.  Implementations MUST
-      // //  NOT remove the CRLF at the end of the header field value.
-      // // -- I'm going to try a slightly different approach to this, rather than intensive scanning.
-      // echo -n "${CANON_HEADERS}" | xxd -ps | tr '\n' ' ' | tr -d ' ' | sed -r 's/(0d)+/0d/g' | sed -r 's/(0a)+/0a/g' \
-      //   |  sed -r 's/(0[aAdD]){2}((20)+|(09)+)+/20/g' >$TEMP_OUT
-      // CANON_HEADERS=$(echo -n `cat $TEMP_OUT` | perl -pe 's/([0-9a-fA-F]{2})/chr hex $1/gie')
+      // Unfold all header field continuation lines as described in
+      //  [RFC5322 S 2.2.3]; in particular, lines with terminators embedded in
+      //  continued header field values (that is, CRLF sequences followed by
+      //  WSP) MUST be interpreted without the CRLF.  Implementations MUST
+      //  NOT remove the CRLF at the end of the header field value.
+      // -- I'm going to try a slightly different approach to this, rather than intensive scanning.
+      echo -n "${CANON_HEADERS}" | xxd -ps | tr '\n' ' ' | tr -d ' ' | sed -r 's/(0d)+/0d/g' | sed -r 's/(0a)+/0a/g' \
+        |  sed -r 's/(0[aAdD]){2}((20)+|(09)+)+/20/g' >$TEMP_OUT
+      this.CANON_HEADERS=$(echo -n `cat $TEMP_OUT` | perl -pe 's/([0-9a-fA-F]{2})/chr hex $1/gie')
   
-      // // Convert all sequences of one or more WSP characters to a single SP
-      // //  character.  WSP characters here include those before and after a
-      // //  line folding boundary.
-      // //  Delete all WSP characters at the end of each unfolded header field
-      // //  value.
-      // CANON_HEADERS=$(echo -n "${CANON_HEADERS}" | sed -r 's/(\s+|\t+)+/ /g')
+      // Convert all sequences of one or more WSP characters to a single SP
+      //  character.  WSP characters here include those before and after a
+      //  line folding boundary.
+      //  Delete all WSP characters at the end of each unfolded header field
+      //  value.
+      this.CANON_HEADERS=$(echo -n "${CANON_HEADERS}" | sed -r 's/(\s+|\t+)+/ /g')
       
-      // // Delete any WSP characters remaining before and after the colon
-      // //  separating the header field name from the header field value.  The
-      // //  colon separator MUST be retained.
-      // // -- Easy, find the first : character, seek and spaces or tabs out and nuke them.
-      // CANON_HEADERS=$(echo -n "${CANON_HEADERS}" | sed -r 's/(\s|\t)*:(\s|\t)*/:/')
-  
-      // rm $TEMP_OUT
+      // Delete any WSP characters remaining before and after the colon
+      //  separating the header field name from the header field value.  The
+      //  colon separator MUST be retained.
+      // -- Easy, find the first : character, seek and spaces or tabs out and nuke them.
+      this.CANON_HEADERS=$(echo -n "${CANON_HEADERS}" | sed -r 's/(\s|\t)*:(\s|\t)*/:/')
+    } 
+    // The given canonicalization header doesn't match either above. Default it. This shouldn't ever happen.
+    else { this.CANON_HEADERS = this.header }
+  }
+
+  // canonicalizeBody
+  // -- Canonicalize the body of the email (EMAIL_BODY) in accordance with the (DKIM_CANON_BODY) algorithm.
+  canonicalizeBody() {
+    this.CANON_BODY = '';
+    // RFC 6376, S 3.4.4: "relaxed" body canonicalization.
+    // Reduce whitespace:
+    //  (1) Ignore all whitespace at the end of each line. DO NOT remove the CRLF.
+    //  (2) Reduce all sequences of whitespace within a line to a single space character.
+
+    // Here's how the below operation does it:
+    // echo EMAIL_BODY (with trailing CRLF) | break the EMAIL_BODY into a hex-dump where each by is a SINGLE column
+    // | replace LF w/ space (turns column into a space-separated list of bytes) | remove all CR characters (0x0D)
+    // | replace and LF (0x0A) characters with CRLF (0x0D0A) | replace any consecutive WSP (0x20 & 0x09) w/ a single space.
+    // | remove any spaces leading up to a CRLF | mash all terminating CR & LF characters into a single CRLF.
+    if (this.DKIM_CANON_BODY == "relaxed") {
+      echo "${EMAIL_BODY}" | xxd -ps -c1 | tr '\n' ' ' \
+        | sed -r 's/0d//gi' | sed -r 's/0a/0d0a/gi' | sed -r 's/((20|09)\s+)+/20/g' \
+        | sed -r 's/(20\s*)+(0d0a)/0d0a/g' | sed -r 's/(0d\s*0a\s*)+$/0d0a/' | tr -d ' ' >$TEMP_OUT
     }
+    // Default to "simple".
+    // RFC 6376, S 3.4.3
+    // The "simple" body canonicalization algorithm ignores all empty lines
+    // at the end of the message body.  An empty line is a line of zero
+    // length after removal of the line terminator.  If there is no body or
+    // no trailing CRLF on the message body, a CRLF is added.  It makes no
+    // other changes to the message body.  In more formal terms, the
+    // "simple" body canonicalization algorithm converts "*CRLF" at the end
+    // of the body to a single "CRLF".i
     else {
-      // The given canonicalization header doesn't match either above. Default it. This shouldn't ever happen.
-      this.CANON_HEADERS= this.header
-    }
+      // Operates the same as "relaxed" but isn't crunching whitespace.
+      echo "${EMAIL_BODY}" | xxd -c1 -ps | tr -d '\n' | tr -d '\r' >$TEMP_OUT
+      sed -r -i 's/(0d)//gi' $TEMP_OUT && sed -r -i 's/(0a)/0d0a/gi' $TEMP_OUT
+      sed -r -i 's/((0d)+|(0a)+)+$/0d0a/' $TEMP_OUT
+    } 
+  
+    this.CANON_BODY = $(LANG='' echo `cat $TEMP_OUT` | perl -pe 's/([0-9a-fA-F]{2})/chr hex $1/gie')
+    this.CANON_BODY = "${CANON_BODY}"`echo -ne "\r\n"`
   }
 
   extractSignature() {

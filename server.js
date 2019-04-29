@@ -6,7 +6,6 @@ const port = 5000;
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
-// Proxy config
 app.set("trust proxy", "loopback");
 
 app.get("/api/dkim/:hostname", (req, res) => {
