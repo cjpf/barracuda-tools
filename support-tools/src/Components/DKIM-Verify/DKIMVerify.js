@@ -18,7 +18,7 @@ export default class DKIMVerify extends Component {
       selector: "",
       DKIM_CANON: "",
       DKIM_CANON_BODY: "",
-      DKIM_CANON_HEADER: ""
+      DKIM_CANON_HEADER: "",
     };
 
     this.checkFileAPI = this.checkFileAPI.bind(this);
@@ -210,10 +210,11 @@ export default class DKIMVerify extends Component {
      *  DKIM-Signature field with a "d=" tag of "example.com" and an "s=" tag
      *  of "foo.bar", the DNS query will be for "foo.bar._domainkey.example.com".
      */
+    this.getPublicKey();
+    this.getSigCanon();
   }
 
   fetchDKIM(hostname) {
-    this.DKIM_RECORD = "";
     fetch("/api/dkim/" + hostname)
       .then(results => results.json())
       .then(DKIM_RECORD =>
@@ -236,7 +237,7 @@ export default class DKIMVerify extends Component {
             this.getFile();
           }}
         />
-        <input
+        {/* <input
           type="button"
           value="getPublicKey"
           onClick={() => {
@@ -249,7 +250,7 @@ export default class DKIMVerify extends Component {
           onClick={() => {
             this.getSigCanon();
           }}
-        />
+        /> */}
         <br />
         <br />
         <label>DKIM Signature</label>
